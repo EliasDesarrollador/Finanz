@@ -1,4 +1,7 @@
-# Welcome to your Lovable project
+#  Welcome to the Expense Tracker Project with Reaccionar y  Mecanografiado
+
+
+
 
 ## Project info
 
