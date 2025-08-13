@@ -1,4 +1,5 @@
-#  Welcome to the Expense Tracker Project with Reaccionar y  Mecanografiado
+#  Welcome to the Expense Tracker Project with React y Typescript
+
 
 
 
