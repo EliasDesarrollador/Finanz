@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -16,6 +17,7 @@ import heroImage from "@/assets/hero-finance.jpg";
 
 const Index = () => {
   const [email, setEmail] = useState("");
+  const navigate = useNavigate();
 
   const features = [
     {
@@ -60,10 +62,19 @@ const Index = () => {
             </div>
             <div className="hidden md:flex items-center space-x-6">
               <a href="#features" className="text-muted-foreground hover:text-primary transition-smooth">Características</a>
-              <a href="#pricing" className="text-muted-foreground hover:text-primary transition-smooth">Precios</a>
-              <Button variant="ghost" size="sm">Iniciar Sesión</Button>
-              <Button size="sm" className="bg-gradient-primary hover:opacity-90 transition-smooth">
-                Registrarse
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={() => navigate('/auth')}
+              >
+                Iniciar Sesión
+              </Button>
+              <Button 
+                size="sm" 
+                className="bg-gradient-primary hover:opacity-90 transition-smooth"
+                onClick={() => navigate('/auth')}
+              >
+                Comenzar Gratis
               </Button>
             </div>
           </div>
@@ -101,13 +112,14 @@ const Index = () => {
               <Button 
                 size="lg" 
                 className="bg-white text-primary hover:bg-white/90 transition-smooth w-full sm:w-auto whitespace-nowrap"
+                onClick={() => navigate('/auth')}
               >
                 Comenzar Gratis
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </div>
             <p className="text-sm text-white/70 mt-4">
-              ✨ Sin tarjeta de crédito • Prueba gratuita de 30 días
+              ✨ 100% Gratuito • Sin tarjeta de crédito • Sin límites
             </p>
           </div>
         </div>
@@ -159,13 +171,14 @@ const Index = () => {
                 ))}
               </div>
               <div className="mt-8">
-                <Button 
-                  size="lg" 
-                  className="bg-gradient-primary hover:opacity-90 transition-smooth"
-                >
-                  Empezar ahora
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
+              <Button 
+                size="lg" 
+                className="bg-gradient-primary hover:opacity-90 transition-smooth"
+                onClick={() => navigate('/auth')}
+              >
+                Empezar ahora
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
               </div>
             </div>
             
@@ -209,19 +222,21 @@ const Index = () => {
             ¿Listo para tomar control de tus finanzas?
           </h2>
           <p className="text-lg text-white/90 mb-8">
-            Únete a miles de usuarios que ya están optimizando sus gastos mensuales
+            Únete a miles de usuarios que ya están optimizando sus gastos de forma completamente gratuita
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button 
               size="lg" 
               className="bg-white text-primary hover:bg-white/90 transition-smooth"
+              onClick={() => navigate('/auth')}
             >
-              Comenzar prueba gratuita
+              Comenzar Gratis
             </Button>
             <Button 
               size="lg" 
               variant="outline"
               className="border-white/30 text-white hover:bg-white/10 transition-smooth"
+              onClick={() => navigate('/dashboard')}
             >
               Ver demo en vivo
             </Button>

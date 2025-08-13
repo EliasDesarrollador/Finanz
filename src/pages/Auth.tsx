@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -25,6 +26,7 @@ const Auth = () => {
     name: ""
   });
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,8 +54,8 @@ const Auth = () => {
       description: isLogin ? "Has iniciado sesión exitosamente" : "Tu cuenta ha sido creada exitosamente"
     });
 
-    // Simulamos redirección al dashboard
-    console.log("Redirecting to dashboard...");
+    // Redirección al dashboard
+    navigate('/dashboard');
   };
 
   const handleInputChange = (field: string, value: string) => {
@@ -70,7 +72,7 @@ const Auth = () => {
         <Button 
           variant="ghost" 
           className="mb-6 text-white hover:bg-white/10"
-          onClick={() => window.history.back()}
+          onClick={() => navigate('/')}
         >
           <ArrowLeft className="h-4 w-4 mr-2" />
           Volver al inicio
@@ -88,8 +90,8 @@ const Auth = () => {
             </h1>
             <p className="text-muted-foreground">
               {isLogin 
-                ? "Accede a tu cuenta para gestionar tus gastos" 
-                : "Únete y comienza a controlar tus finanzas"}
+                ? "Accede a tu cuenta para gestionar tus gastos gratis" 
+                : "Únete gratis y comienza a controlar tus finanzas"}
             </p>
           </div>
 

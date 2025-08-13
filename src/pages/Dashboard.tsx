@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -32,6 +33,7 @@ const Dashboard = () => {
     date: new Date().toISOString().split('T')[0]
   });
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const expenses = [
     { id: 1, amount: 850, category: "rent", description: "Alquiler mensual", date: "2024-01-15", icon: <Home className="h-4 w-4" /> },
@@ -87,7 +89,10 @@ const Dashboard = () => {
       <header className="border-b border-border/50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            <div className="flex items-center space-x-2">
+            <div 
+              className="flex items-center space-x-2 cursor-pointer hover:opacity-80 transition-smooth"
+              onClick={() => navigate('/')}
+            >
               <DollarSign className="h-8 w-8 text-primary" />
               <span className="text-xl font-bold text-foreground">ExpenseTracker</span>
             </div>
