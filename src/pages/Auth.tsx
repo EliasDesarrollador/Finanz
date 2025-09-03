@@ -67,6 +67,10 @@ const Auth = () => {
         const data = await res.json();
         if (!res.ok) throw new Error(data?.message || 'Error al iniciar sesión');
 
+        // Persistimos el usuario en localStorage para que el Dashboard lo use
+        if (data && data.user) {
+          localStorage.setItem('et_user', JSON.stringify(data.user));
+        }
         toast({
           title: "¡Bienvenido!",
           description: "Has iniciado sesión exitosamente"
@@ -81,6 +85,11 @@ const Auth = () => {
         const data = await res.json();
         if (!res.ok) throw new Error(data?.message || 'Error al registrar usuario');
 
+        // Después de registrarse, no tenemos token; podemos forzar un login o guardar lo mínimo
+        // Para simplificar, guardamos email para prefilling o un objeto parcial
+        if (formData.email) {
+          localStorage.setItem('et_user', JSON.stringify({ email: formData.email }));
+        }
         toast({
           title: "¡Cuenta creada!",
           description: "Tu cuenta ha sido creada exitosamente"
