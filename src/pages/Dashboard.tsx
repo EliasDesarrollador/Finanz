@@ -25,6 +25,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { formatCurrency } from "@/utils/currency";
 
+// URL base del backend empleada para consultar y persistir gastos y recuperar sesión
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://192.168.43.74:3000';
 
 const Dashboard = () => {
@@ -37,8 +38,10 @@ const Dashboard = () => {
   });
   const { toast } = useToast();
   const navigate = useNavigate();
+  // Estado del usuario autenticado (se restaura desde localStorage en useEffect)
   const [user, setUser] = useState<{ id?: number; name?: string; email?: string } | null>(null);
 
+  // Estado principal de gastos en memoria (se llena desde la API si hay usuario con id)
   const [expenses, setExpenses] = useState([
     { id: 1, amount: 850, category: "rent", description: "Alquiler mensual", date: "2024-01-15", icon: <Home className="h-4 w-4" /> },
     { id: 2, amount: 320, category: "food", description: "Supermercado semanal", date: "2024-01-14", icon: <ShoppingBag className="h-4 w-4" /> },
@@ -46,6 +49,7 @@ const Dashboard = () => {
     { id: 4, amount: 95, category: "entertainment", description: "Suscripciones streaming", date: "2024-01-12", icon: <Gamepad2 className="h-4 w-4" /> },
     { id: 5, amount: 45, category: "food", description: "Café y desayunos", date: "2024-01-11", icon: <Coffee className="h-4 w-4" /> }
   ]);
+  // Estado del modal de presupuesto y del valor temporal a guardar
   const [showBudgetModal, setShowBudgetModal] = useState(false);
   const [newBudget, setNewBudget] = useState("");
 
@@ -58,9 +62,11 @@ const Dashboard = () => {
   ];
 
   const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
+  // Presupuesto mensual actual (persistido por usuario en localStorage)
   const [monthlyBudget, setMonthlyBudget] = useState(2500);
   const remaining = monthlyBudget - totalExpenses;
 
+  // Carga inicial: restaura usuario, presupuesto por usuario y sincroniza gastos desde la API
   useEffect(() => {
     try {
       const raw = localStorage.getItem('et_user');
@@ -93,6 +99,7 @@ const Dashboard = () => {
     } catch {}
   }, []);
 
+  // Agregar un gasto: valida, crea objeto y persiste en la API si hay usuario con id
   const handleAddExpense = async () => {
     const amountNumber = Number(newExpense.amount);
     if (
@@ -162,17 +169,28 @@ const Dashboard = () => {
     setShowAddExpense(false);
   };
 
+  // Abre el modal de presupuesto precargando el valor actual
   const handleOpenBudget = () => {
     setNewBudget(monthlyBudget.toString());
     setShowBudgetModal(true);
   };
 
+  // Guarda el presupuesto (valida y persiste por usuario en localStorage)
   const handleSaveBudget = () => {
     const amountNumber = Number(newBudget);
     if (!newBudget || Number.isNaN(amountNumber) || amountNumber <= 0) {
       toast({
         title: "Error",
         description: "Ingresa un presupuesto válido mayor a 0",
+        variant: "destructive"
+      });
+      return;
+    }
+    // Validación extra: no permitir presupuesto menor al total de gastos actuales
+    if (amountNumber < totalExpenses) {
+      toast({
+        title: "Error",
+        description: `El presupuesto no puede ser menor a tus gastos actuales (${formatCurrency(totalExpenses)})`,
         variant: "destructive"
       });
       return;
@@ -209,6 +227,10 @@ const Dashboard = () => {
               <span className="text-xl font-bold text-foreground">ExpenseTracker</span>
             </div>
             <div className="flex items-center space-x-3">
+              {/* Saludo al usuario logueado */}
+              {user && (user.name || user.email) && (
+                <span className="text-sm text-muted-foreground">Hola, {user.name || user.email}</span>
+              )}
               <Button
                 onClick={() => setShowAddExpense(true)}
                 className="bg-gradient-primary hover:opacity-90 transition-smooth"
