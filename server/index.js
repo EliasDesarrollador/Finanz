@@ -91,6 +91,28 @@ async function initDb() {
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
   `);
+
+  // 6.4) Creamos la tabla de gastos si no existe
+  // Campos:
+  //  - id: clave primaria autoincremental
+  //  - user_id: referencia a users.id
+  //  - amount: monto en guaraníes (entero)
+  //  - category: categoría del gasto
+  //  - description: descripción breve
+  //  - date: fecha del gasto (YYYY-MM-DD)
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS expenses (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      user_id INT NOT NULL,
+      amount INT NOT NULL,
+      category VARCHAR(50) NOT NULL,
+      description VARCHAR(255) NOT NULL,
+      date DATE NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT fk_expenses_user FOREIGN KEY (user_id)
+        REFERENCES users(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  `);
 }
 
 // 7) Ruta de salud para verificar que el servidor y la DB responden
@@ -180,7 +202,61 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
-// 10) Arranque del servidor
+// 10) Rutas de gastos (CRUD mínimo)
+// GET /api/expenses?userId=1 -> Lista gastos del usuario
+app.get('/api/expenses', async (req, res) => {
+  try {
+    const userId = Number(req.query.userId);
+    if (!userId) {
+      return res.status(400).json({ message: 'userId es requerido' });
+    }
+    const [rows] = await pool.query(
+      `SELECT 
+         id,
+         user_id as userId,
+         amount,
+         category,
+         description,
+         DATE_FORMAT(date, '%Y-%m-%d') as date
+       FROM expenses
+       WHERE user_id = :userId
+       ORDER BY date DESC, id DESC`,
+      { userId }
+    );
+    return res.json({ expenses: rows });
+  } catch (err) {
+    console.error('GET /api/expenses error:', err);
+    return res.status(500).json({ message: 'Error interno del servidor' });
+  }
+});
+
+// POST /api/expenses -> Crea un gasto
+// Body: { userId, amount, category, description, date }
+app.post('/api/expenses', async (req, res) => {
+  try {
+    const { userId, amount, category, description, date } = req.body || {};
+    const amountNumber = Number(amount);
+
+    if (!userId || Number.isNaN(amountNumber) || amountNumber <= 0 || !category || !description || !date) {
+      return res.status(400).json({ message: 'Datos inválidos' });
+    }
+
+    const [result] = await pool.query(
+      `INSERT INTO expenses (user_id, amount, category, description, date)
+       VALUES (:userId, :amount, :category, :description, :date)`,
+      { userId, amount: amountNumber, category, description, date }
+    );
+
+    // mysql2/promise retorna ResultSetHeader con insertId
+    const id = result && result.insertId ? result.insertId : undefined;
+    return res.status(201).json({ expense: { id, userId, amount: amountNumber, category, description, date } });
+  } catch (err) {
+    console.error('POST /api/expenses error:', err);
+    return res.status(500).json({ message: 'Error interno del servidor' });
+  }
+});
+
+// 11) Arranque del servidor
 // - Primero inicializamos la DB (creación de base, pool y tablas)
 // - Luego levantamos el servidor HTTP en el puerto configurado
 initDb()
