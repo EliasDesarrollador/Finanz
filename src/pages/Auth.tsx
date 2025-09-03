@@ -16,9 +16,16 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
+/**
+ * Base URL del backend. Configurable mediante variable de entorno de Vite.
+ * Si no se define VITE_API_BASE, usa la IP local por defecto.
+ */
+const API_BASE = import.meta.env.VITE_API_BASE || 'http://192.168.43.74:3000';
+
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -28,10 +35,10 @@ const Auth = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!formData.email || !formData.password) {
+
+    if (!formData.email || !formData.password || (!isLogin && !formData.name)) {
       toast({
         title: "Error",
         description: "Por favor completa todos los campos",
@@ -49,13 +56,43 @@ const Auth = () => {
       return;
     }
 
-    toast({
-      title: isLogin ? "¡Bienvenido!" : "¡Cuenta creada!",
-      description: isLogin ? "Has iniciado sesión exitosamente" : "Tu cuenta ha sido creada exitosamente"
-    });
+    setIsLoading(true);
+    try {
+      if (isLogin) {
+        const res = await fetch(`${API_BASE}/api/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: formData.email, password: formData.password })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data?.message || 'Error al iniciar sesión');
 
-    // Redirección al dashboard
-    navigate('/dashboard');
+        toast({
+          title: "¡Bienvenido!",
+          description: "Has iniciado sesión exitosamente"
+        });
+        navigate('/dashboard');
+      } else {
+        const res = await fetch(`${API_BASE}/api/auth/register`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: formData.name, email: formData.email, password: formData.password })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data?.message || 'Error al registrar usuario');
+
+        toast({
+          title: "¡Cuenta creada!",
+          description: "Tu cuenta ha sido creada exitosamente"
+        });
+        navigate('/dashboard');
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Error de red';
+      toast({ title: 'Error', description: msg, variant: 'destructive' });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleInputChange = (field: string, value: string) => {
@@ -183,8 +220,9 @@ const Auth = () => {
             <Button 
               type="submit" 
               className="w-full bg-gradient-primary hover:opacity-90 transition-smooth"
+              disabled={isLoading}
             >
-              {isLogin ? "Iniciar Sesión" : "Crear Cuenta"}
+              {isLoading ? "Procesando..." : (isLogin ? "Iniciar Sesión" : "Crear Cuenta")}
             </Button>
           </form>
 
