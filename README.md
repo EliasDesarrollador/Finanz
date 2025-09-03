@@ -6,7 +6,6 @@
 
 ## Project info
 
-**URL**: https://lovable.dev/projects/9a0a12b7-d958-4b04-813b-6be71b5cc8b1
 
 ## How can I edit this code?
 
@@ -49,12 +48,18 @@ npm run dev
 ## What technologies are used for this project?
 
 This project is built with:
-
+Frontend :
 - Vite
 - TypeScript
 - React
 - shadcn-ui
 - Tailwind CSS
+
+Backend :
+- Node.js
+- Express
+- MySQL
+
 
 ## How can I deploy this project?
 
@@ -62,6 +67,4 @@ This project is built with:
 
 
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
