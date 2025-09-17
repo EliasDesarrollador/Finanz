@@ -9,7 +9,6 @@ import {
   Plus, 
   TrendingUp, 
   TrendingDown, 
-  PieChart,
   Calendar,
   Filter,
   Download,
@@ -25,6 +24,12 @@ import {
 import LogoIcon from "@/components/LogoIcon";
 import { useToast } from "@/hooks/use-toast";
 import { formatCurrency } from "@/utils/currency";
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from "@/components/ui/chart";
+import { Pie, PieChart, Cell } from "recharts";
 
 // URL base del backend: configurable por VITE_API_BASE; por defecto rutas relativas (mismo origen)
 const API_BASE = (import.meta.env.VITE_API_BASE as string | undefined) || '';
@@ -373,12 +378,47 @@ const Dashboard = () => {
             </Card>
 
             <Card className="p-6 bg-gradient-card shadow-card">
-              <div className="text-center">
-                <PieChart className="h-12 w-12 text-primary mx-auto mb-3" />
-                <h3 className="text-lg font-semibold text-card-foreground mb-2">Análisis Detallado</h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Ve gráficos detallados de tus gastos
-                </p>
+              <h3 className="text-lg font-semibold text-card-foreground mb-4">Gráfico de Gastos</h3>
+              {totalExpenses > 0 ? (
+                <ChartContainer
+                  config={{
+                    ...categories.reduce((acc, cat) => ({
+                      ...acc,
+                      [cat.value]: { label: cat.label, color: `hsl(var(--${cat.color.replace('bg-', '')}))` },
+                    }), {}),
+                  }}
+                  className="aspect-square h-[250px] w-full"
+                >
+                  <PieChart>
+                    <ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel />} />
+                    <Pie
+                      data={categories.map(cat => ({
+                        name: cat.value,
+                        value: expenses
+                          .filter(expense => expense.category === cat.value)
+                          .reduce((sum, expense) => sum + expense.amount, 0),
+                      }))}
+                      dataKey="value"
+                      nameKey="name"
+                      innerRadius={60}
+                      outerRadius={80}
+                      strokeWidth={2}
+                      cornerRadius={5}
+                      paddingAngle={5}
+                    >
+                      {categories.map((category) => (
+                        <Cell
+                          key={`cell-${category.value}`}
+                          fill={`hsl(var(--${category.color.replace('bg-', '')}))`}
+                        />
+                      ))}
+                    </Pie>
+                  </PieChart>
+                </ChartContainer>
+              ) : (
+                <div className="text-center text-muted-foreground">No hay gastos para mostrar el gráfico.</div>
+              )}
+              <div className="text-center mt-4">
                 <Button variant="outline" className="w-full" onClick={() => navigate('/reports')}>
                   Ver Reportes
                 </Button>
