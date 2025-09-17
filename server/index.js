@@ -227,11 +227,14 @@ app.post('/api/auth/login', async (req, res) => {
 app.get('/api/expenses', async (req, res) => {
   try {
     const userId = Number(req.query.userId);
+    const from = req.query.from ? String(req.query.from) : undefined;
+    const to = req.query.to ? String(req.query.to) : undefined;
+
     if (!userId) {
       return res.status(400).json({ message: 'userId es requerido' });
     }
-    const [rows] = await pool.query(
-      `SELECT 
+
+    let sql = `SELECT 
          id,
          user_id as userId,
          amount,
@@ -239,10 +242,22 @@ app.get('/api/expenses', async (req, res) => {
          description,
          DATE_FORMAT(date, '%Y-%m-%d') as date
        FROM expenses
-       WHERE user_id = :userId
-       ORDER BY date DESC, id DESC`,
-      { userId }
-    );
+       WHERE user_id = :userId`;
+
+    const params = { userId };
+
+    if (from) {
+      sql += ' AND date >= :from';
+      params.from = from;
+    }
+    if (to) {
+      sql += ' AND date <= :to';
+      params.to = to;
+    }
+
+    sql += ' ORDER BY date DESC, id DESC';
+
+    const [rows] = await pool.query(sql, params);
     return res.json({ expenses: rows });
   } catch (err) {
     console.error('GET /api/expenses error:', err);
