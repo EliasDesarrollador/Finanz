@@ -19,14 +19,15 @@ import {
   ShoppingBag,
   Coffee,
   Gamepad2,
-  MoreHorizontal
+  MoreHorizontal,
+  LogOut
 } from "lucide-react";
 import LogoIcon from "@/components/LogoIcon";
 import { useToast } from "@/hooks/use-toast";
 import { formatCurrency } from "@/utils/currency";
 
-// URL base del backend empleada para consultar y persistir gastos y recuperar sesión
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://192.168.43.74:3000';
+// URL base del backend: configurable por VITE_API_BASE; por defecto rutas relativas (mismo origen)
+const API_BASE = (import.meta.env.VITE_API_BASE as string | undefined) || '';
 
 const Dashboard = () => {
   const [showAddExpense, setShowAddExpense] = useState(false);
@@ -245,6 +246,12 @@ const Dashboard = () => {
               <Button variant="outline" size="icon">
                 <Download className="h-4 w-4" />
               </Button>
+              <Button variant="outline" size="icon" onClick={() => {
+                localStorage.removeItem('et_user');
+                navigate('/auth');
+              }}>
+                <LogOut className="h-4 w-4" />
+              </Button>
             </div>
           </div>
         </div>
@@ -372,7 +379,7 @@ const Dashboard = () => {
                 <p className="text-sm text-muted-foreground mb-4">
                   Ve gráficos detallados de tus gastos
                 </p>
-                <Button variant="outline" className="w-full">
+                <Button variant="outline" className="w-full" onClick={() => navigate('/reports')}>
                   Ver Reportes
                 </Button>
               </div>

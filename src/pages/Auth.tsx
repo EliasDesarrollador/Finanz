@@ -18,9 +18,9 @@ import { useToast } from "@/hooks/use-toast";
 
 /**
  * Base URL del backend. Configurable mediante variable de entorno de Vite.
- * Si no se define VITE_API_BASE, usa la IP local por defecto.
+ * Si no se define VITE_API_BASE, usa rutas relativas (mismo origen).
  */
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://192.168.43.74:3000';
+const API_BASE = (import.meta.env.VITE_API_BASE as string | undefined) || '';
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);

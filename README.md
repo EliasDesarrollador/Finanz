@@ -1,4 +1,4 @@
-#  Welcome to the Expense Tracker💰📉🖥️ Project with React y Typescript
+#  Welcome to the  Finanz  💰📉🖥️ Project with React y Typescript
 
 
 

@@ -14,7 +14,7 @@ const Index = () => {
         </div>
         
         <p className="text-lg text-muted-foreground mb-8">
-          Gestiona tus gastos mensuales de forma simple y gratuita
+          Gestiona tus gastos mensuales de forma simple 
         </p>
         
         <div className="space-y-4">
@@ -23,7 +23,7 @@ const Index = () => {
             className="w-full bg-gradient-primary hover:opacity-90 transition-smooth"
             onClick={() => navigate('/auth')}
           >
-            Comenzar Gratis
+            Comenzar 
           </Button>
           
           <Button 
