@@ -6,7 +6,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { 
-  DollarSign, 
   Eye, 
   EyeOff,
   Mail,
@@ -14,6 +13,7 @@ import {
   User,
   ArrowLeft
 } from "lucide-react";
+import LogoIcon from "@/components/LogoIcon";
 import { useToast } from "@/hooks/use-toast";
 
 /**
@@ -128,8 +128,8 @@ const Auth = () => {
           {/* Header */}
           <div className="text-center mb-8">
             <div className="flex items-center justify-center space-x-2 mb-4">
-              <DollarSign className="h-8 w-8 text-primary" />
-              <span className="text-2xl font-bold text-card-foreground">ExpenseTracker</span>
+              <LogoIcon className="h-8 w-8" />
+              <span className="text-2xl font-bold text-card-foreground">Finanz</span>
             </div>
             <h1 className="text-2xl font-semibold text-card-foreground mb-2">
               {isLogin ? "Iniciar Sesión" : "Crear Cuenta"}

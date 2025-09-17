@@ -7,7 +7,6 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
   Plus, 
-  DollarSign, 
   TrendingUp, 
   TrendingDown, 
   PieChart,
@@ -22,6 +21,7 @@ import {
   Gamepad2,
   MoreHorizontal
 } from "lucide-react";
+import LogoIcon from "@/components/LogoIcon";
 import { useToast } from "@/hooks/use-toast";
 import { formatCurrency } from "@/utils/currency";
 
@@ -223,8 +223,8 @@ const Dashboard = () => {
               className="flex items-center space-x-2 cursor-pointer hover:opacity-80 transition-smooth"
               onClick={() => navigate('/')}
             >
-              <DollarSign className="h-8 w-8 text-primary" />
-              <span className="text-xl font-bold text-foreground">ExpenseTracker</span>
+              <LogoIcon className="h-8 w-8" />
+              <span className="text-xl font-bold text-foreground">Finanz</span>
             </div>
             <div className="flex items-center space-x-3">
               {/* Saludo al usuario logueado */}

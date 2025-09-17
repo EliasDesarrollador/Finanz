@@ -113,6 +113,20 @@ async function initDb() {
         REFERENCES users(id) ON DELETE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
   `);
+
+  // 6.5) Creamos la tabla de saldos (balances) por usuario si no existe
+  //  - user_id: PK y FK hacia users.id
+  //  - current_balance: saldo actual en guaraníes (entero, >= 0)
+  //  - updated_at: última actualización automática
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS balances (
+      user_id INT PRIMARY KEY,
+      current_balance INT NOT NULL DEFAULT 0,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      CONSTRAINT fk_balances_user FOREIGN KEY (user_id)
+        REFERENCES users(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  `);
 }
 
 // 7) Ruta de salud para verificar que el servidor y la DB responden
@@ -146,9 +160,15 @@ app.post('/api/auth/register', async (req, res) => {
     const password_hash = await bcrypt.hash(password, 10);
 
     // Insert del nuevo usuario en la tabla
-    await pool.query(
+    const [insertUser] = await pool.query(
       'INSERT INTO users (name, email, password_hash) VALUES (:name, :email, :password_hash)',
       { name, email, password_hash }
+    );
+    const userId = insertUser && insertUser.insertId ? insertUser.insertId : undefined;
+    // Inicializa el saldo del usuario en 0
+    await pool.query(
+      'INSERT INTO balances (user_id, current_balance) VALUES (:userId, 0)',
+      { userId }
     );
 
     return res.status(201).json({ message: 'Usuario registrado correctamente' });
@@ -233,25 +253,123 @@ app.get('/api/expenses', async (req, res) => {
 // POST /api/expenses -> Crea un gasto
 // Body: { userId, amount, category, description, date }
 app.post('/api/expenses', async (req, res) => {
+  const conn = await pool.getConnection();
   try {
     const { userId, amount, category, description, date } = req.body || {};
     const amountNumber = Number(amount);
 
     if (!userId || Number.isNaN(amountNumber) || amountNumber <= 0 || !category || !description || !date) {
+      conn.release();
       return res.status(400).json({ message: 'Datos inválidos' });
     }
 
-    const [result] = await pool.query(
+    await conn.beginTransaction();
+
+    // Bloqueamos/aseguramos el registro de saldo del usuario para control de concurrencia
+    let [rows] = await conn.query(
+      'SELECT current_balance FROM balances WHERE user_id = :userId FOR UPDATE',
+      { userId }
+    );
+
+    if (!Array.isArray(rows) || rows.length === 0) {
+      await conn.query(
+        'INSERT INTO balances (user_id, current_balance) VALUES (:userId, 0)',
+        { userId }
+      );
+      [rows] = await conn.query(
+        'SELECT current_balance FROM balances WHERE user_id = :userId FOR UPDATE',
+        { userId }
+      );
+    }
+
+    // Ya no rechazamos por saldo insuficiente: permitimos saldo negativo
+
+    const [insertExp] = await conn.query(
       `INSERT INTO expenses (user_id, amount, category, description, date)
        VALUES (:userId, :amount, :category, :description, :date)`,
       { userId, amount: amountNumber, category, description, date }
     );
 
-    // mysql2/promise retorna ResultSetHeader con insertId
-    const id = result && result.insertId ? result.insertId : undefined;
+    // Actualizamos saldo (puede ir negativo)
+    await conn.query(
+      'UPDATE balances SET current_balance = current_balance - :amount WHERE user_id = :userId',
+      { amount: amountNumber, userId }
+    );
+
+    await conn.commit();
+    conn.release();
+
+    const id = insertExp && insertExp.insertId ? insertExp.insertId : undefined;
     return res.status(201).json({ expense: { id, userId, amount: amountNumber, category, description, date } });
   } catch (err) {
+    try { await conn.rollback(); } catch {}
+    conn.release();
     console.error('POST /api/expenses error:', err);
+    return res.status(500).json({ message: 'Error interno del servidor' });
+  }
+});
+
+// 10.1) Rutas de saldo
+// GET /api/balance?userId=1 -> Obtiene el saldo actual del usuario
+app.get('/api/balance', async (req, res) => {
+  try {
+    const userId = Number(req.query.userId);
+    if (!userId) {
+      return res.status(400).json({ message: 'userId es requerido' });
+    }
+    const [rows] = await pool.query(
+      'SELECT current_balance as balance FROM balances WHERE user_id = :userId LIMIT 1',
+      { userId }
+    );
+    if (!Array.isArray(rows) || rows.length === 0) {
+      return res.json({ balance: 0 });
+    }
+    return res.json({ balance: rows[0].balance });
+  } catch (err) {
+    console.error('GET /api/balance error:', err);
+    return res.status(500).json({ message: 'Error interno del servidor' });
+  }
+});
+
+// POST /api/balance/deposit -> Aumenta el saldo disponible
+// Body: { userId, amount }
+app.post('/api/balance/deposit', async (req, res) => {
+  const conn = await pool.getConnection();
+  try {
+    const { userId, amount } = req.body || {};
+    const amountNumber = Number(amount);
+
+    if (!userId || Number.isNaN(amountNumber) || amountNumber <= 0) {
+      conn.release();
+      return res.status(400).json({ message: 'Datos inválidos' });
+    }
+
+    await conn.beginTransaction();
+
+    // Aseguramos existencia del registro de balance
+    await conn.query(
+      'INSERT INTO balances (user_id, current_balance) VALUES (:userId, 0) ON DUPLICATE KEY UPDATE current_balance = current_balance',
+      { userId }
+    );
+
+    await conn.query(
+      'UPDATE balances SET current_balance = current_balance + :amount WHERE user_id = :userId',
+      { amount: amountNumber, userId }
+    );
+
+    const [rows] = await conn.query(
+      'SELECT current_balance as balance FROM balances WHERE user_id = :userId',
+      { userId }
+    );
+
+    await conn.commit();
+    conn.release();
+
+    return res.status(200).json({ balance: rows[0].balance });
+  } catch (err) {
+    try { await conn.rollback(); } catch {}
+    conn.release();
+    console.error('POST /api/balance/deposit error:', err);
     return res.status(500).json({ message: 'Error interno del servidor' });
   }
 });
