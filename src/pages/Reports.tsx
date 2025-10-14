@@ -79,6 +79,97 @@ const Reports = () => {
     }
   };
 
+  const handleExportPDF = () => {
+    if (expenses.length === 0) {
+      toast({ title: 'Sin datos', description: 'No hay gastos para exportar en el rango seleccionado', variant: 'destructive' });
+      return;
+    }
+
+    const escapeHtml = (s: any) => String(s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+
+    const title = `Reporte de gastos ${from} a ${to}`;
+    const baseHref = window.location.origin;
+    const userDisplay = (user && (user.name || user.email)) ? (user.name || user.email) : '';
+    const rows = expenses.map((e) => `
+      <tr>
+        <td>${escapeHtml(e.date)}</td>
+        <td>${escapeHtml(e.category)}</td>
+        <td>${escapeHtml(e.description)}</td>
+        <td style="text-align:right;color:#b91c1c;">-${escapeHtml(formatCurrency(Number(e.amount)))}</td>
+      </tr>
+    `).join('');
+
+    const html = `
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<base href="${escapeHtml(baseHref)}/">
+<title>${escapeHtml(title)}</title>
+<style>
+  @page { size: A4; margin: 16mm; }
+  body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif; color: #111827; }
+  h1 { font-size: 20px; margin: 0 0 12px; }
+  .header { display:flex; justify-content: space-between; align-items:center; margin: 0 0 12px; }
+  .brand { display:flex; align-items:center; gap:6px; font-size: 12px; color:#374151; }
+  .brand img { width:16px; height:16px; }
+  .brand .user { font-weight: 600; }
+  .range { color: #6b7280; margin-bottom: 16px; }
+  .summary { display:flex; justify-content: space-between; align-items:center; padding:10px 12px; border:1px solid #e5e7eb; border-radius:8px; margin-bottom: 16px; background:#f9fafb;}
+  table { width: 100%; border-collapse: collapse; }
+  th, td { padding: 8px 10px; border-bottom: 1px solid #e5e7eb; font-size: 12px; }
+  th { text-align: left; background: #f3f4f6; }
+  tfoot td { font-weight: 600; }
+  .muted { color: #6b7280; }
+</style>
+</head>
+<body>
+  <div class="header">
+    <h1>Reporte de Gastos</h1>
+    <div class="brand"><img src="/favicon.ico" alt="Finanz" /> <span>Finanz</span> <span class="muted">•</span> <span class="user">${escapeHtml(userDisplay)}</span></div>
+  </div>
+  <div class="range">${escapeHtml(from)} — ${escapeHtml(to)}</div>
+  <div class="summary">
+    <span>Total Gastos</span>
+    <strong style="color:#b91c1c;">-${escapeHtml(formatCurrency(total))}</strong>
+  </div>
+  <table>
+    <thead>
+      <tr><th>Fecha</th><th>Categoría</th><th>Descripción</th><th style="text-align:right;">Monto</th></tr>
+    </thead>
+    <tbody>
+      ${rows}
+    </tbody>
+    <tfoot>
+      <tr>
+        <td colspan="3" style="text-align:right;">Total</td>
+        <td style="text-align:right;color:#b91c1c;">-${escapeHtml(formatCurrency(total))}</td>
+      </tr>
+    </tfoot>
+  </table>
+  <script>
+    window.onload = function(){
+      try { window.print(); } catch(e) {}
+      setTimeout(function(){ window.close(); }, 300);
+    }
+  </script>
+</body>
+</html>`;
+    const win = window.open('', '_blank');
+    if (!win) {
+      toast({ title: 'Bloqueado por el navegador', description: 'Permite ventanas emergentes para exportar el PDF', variant: 'destructive' });
+      return;
+    }
+    win.document.open();
+    win.document.write(html);
+    win.document.close();
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -123,7 +214,10 @@ const Reports = () => {
             <Card className="p-6 bg-gradient-card shadow-card">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-card-foreground">Resultados</h3>
-                <div className="text-sm text-muted-foreground">{from} — {to}</div>
+                <div className="flex items-center gap-3">
+                  <div className="text-sm text-muted-foreground">{from} — {to}</div>
+                  <Button variant="outline" size="sm" onClick={handleExportPDF} disabled={expenses.length === 0 || loading}>Exportar PDF</Button>
+                </div>
               </div>
 
               <div className="flex items-center justify-between border rounded-md p-3 bg-background mb-4">

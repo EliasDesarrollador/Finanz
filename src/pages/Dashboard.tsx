@@ -11,7 +11,6 @@ import {
   TrendingDown, 
   Calendar,
   Filter,
-  Download,
   CreditCard,
   Home,
   Car,
@@ -248,10 +247,7 @@ const Dashboard = () => {
                 <CreditCard className="h-4 w-4 mr-2" />
                 Presupuesto
               </Button>
-              <Button variant="outline" size="icon">
-                <Download className="h-4 w-4" />
-              </Button>
-              <Button variant="outline" size="icon" onClick={() => {
+                            <Button variant="outline" size="icon" onClick={() => {
                 localStorage.removeItem('et_user');
                 navigate('/auth');
               }}>

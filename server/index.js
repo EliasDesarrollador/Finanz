@@ -42,6 +42,15 @@ const DB_USER = process.env.DB_USER || 'root';
 const DB_PASSWORD = process.env.DB_PASSWORD || '';
 const DB_NAME = process.env.DB_NAME || 'expense_tracker';
 const PORT = Number(process.env.PORT || 3000);
+// Base pública del servidor para construir redirect_uri de OAuth
+const SERVER_BASE_URL = process.env.SERVER_BASE_URL || `http://localhost:${PORT}`;
+// Dónde redirigir al frontend tras OAuth si no se pasa ?redirect
+const OAUTH_REDIRECT_DEFAULT = process.env.OAUTH_REDIRECT_DEFAULT || 'http://localhost:5173/auth';
+// Credenciales OAuth
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
+const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || '';
+const FACEBOOK_CLIENT_ID = process.env.FACEBOOK_CLIENT_ID || '';
+const FACEBOOK_CLIENT_SECRET = process.env.FACEBOOK_CLIENT_SECRET || '';
 
 // 5) Pool de conexiones MySQL (se inicializa en initDb)
 // Se utiliza un pool para reutilizar conexiones y mejorar el rendimiento.
@@ -127,6 +136,30 @@ async function initDb() {
         REFERENCES users(id) ON DELETE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
   `);
+}
+
+// Helper: crear o recuperar usuario por email (para OAuth)
+async function upsertSocialUser({ name, email }) {
+  if (!email) throw new Error('Email requerido');
+  let [rows] = await pool.query(
+    'SELECT id, name, email FROM users WHERE email = :email LIMIT 1',
+    { email }
+  );
+  if (Array.isArray(rows) && rows.length > 0) {
+    return rows[0];
+  }
+  const random = Math.random().toString(36).slice(2);
+  const password_hash = await bcrypt.hash(random, 10);
+  const [insertUser] = await pool.query(
+    'INSERT INTO users (name, email, password_hash) VALUES (:name, :email, :password_hash)',
+    { name: name || (email.split('@')[0] || 'Usuario'), email, password_hash }
+  );
+  const userId = insertUser && insertUser.insertId ? insertUser.insertId : undefined;
+  await pool.query(
+    'INSERT INTO balances (user_id, current_balance) VALUES (:userId, 0)',
+    { userId }
+  );
+  return { id: userId, name: name || email, email };
 }
 
 // 7) Ruta de salud para verificar que el servidor y la DB responden
@@ -219,6 +252,118 @@ app.post('/api/auth/login', async (req, res) => {
   } catch (err) {
     console.error('Login error:', err);
     return res.status(500).json({ message: 'Error interno del servidor' });
+  }
+});
+
+// 9.1) OAuth: Google
+app.get('/api/auth/google/start', (req, res) => {
+  try {
+    const redirectFinal = req.query.redirect ? String(req.query.redirect) : OAUTH_REDIRECT_DEFAULT;
+    const state = Buffer.from(JSON.stringify({ redirect: redirectFinal })).toString('base64url');
+    const redirect_uri = `${SERVER_BASE_URL}/api/auth/google/callback`;
+    const params = new URLSearchParams({
+      client_id: GOOGLE_CLIENT_ID,
+      redirect_uri,
+      response_type: 'code',
+      scope: 'openid email profile',
+      access_type: 'online',
+      state,
+    });
+    res.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`);
+  } catch (e) {
+    console.error('Google start error:', e);
+    res.status(500).send('OAuth start error');
+  }
+});
+
+app.get('/api/auth/google/callback', async (req, res) => {
+  try {
+    const code = String(req.query.code || '');
+    const stateRaw = req.query.state ? String(req.query.state) : '';
+    const state = stateRaw ? JSON.parse(Buffer.from(stateRaw, 'base64url').toString('utf8')) : {};
+    const redirectFinal = state.redirect || OAUTH_REDIRECT_DEFAULT;
+
+    const redirect_uri = `${SERVER_BASE_URL}/api/auth/google/callback`;
+    const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        code,
+        client_id: GOOGLE_CLIENT_ID,
+        client_secret: GOOGLE_CLIENT_SECRET,
+        redirect_uri,
+        grant_type: 'authorization_code',
+      }).toString(),
+    });
+    const tokenData = await tokenRes.json();
+    if (!tokenRes.ok) throw new Error(tokenData?.error_description || 'Error al intercambiar código');
+
+    const access_token = tokenData.access_token;
+    const userRes = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+      headers: { Authorization: `Bearer ${access_token}` },
+    });
+    const userInfo = await userRes.json();
+    if (!userRes.ok || !userInfo || !userInfo.email) throw new Error('No se pudo obtener el perfil de Google');
+
+    const dbUser = await upsertSocialUser({ name: userInfo.name, email: userInfo.email });
+    const payload = Buffer.from(JSON.stringify({ user: { id: dbUser.id, name: dbUser.name, email: dbUser.email } })).toString('base64url');
+    res.redirect(`${redirectFinal}#sso=${payload}`);
+  } catch (e) {
+    console.error('Google callback error:', e);
+    res.status(500).send('OAuth error');
+  }
+});
+
+// 9.2) OAuth: Facebook
+app.get('/api/auth/facebook/start', (req, res) => {
+  try {
+    const redirectFinal = req.query.redirect ? String(req.query.redirect) : OAUTH_REDIRECT_DEFAULT;
+    const state = Buffer.from(JSON.stringify({ redirect: redirectFinal })).toString('base64url');
+    const redirect_uri = `${SERVER_BASE_URL}/api/auth/facebook/callback`;
+    const params = new URLSearchParams({
+      client_id: FACEBOOK_CLIENT_ID,
+      redirect_uri,
+      response_type: 'code',
+      scope: 'email,public_profile',
+      state,
+    });
+    res.redirect(`https://www.facebook.com/v18.0/dialog/oauth?${params.toString()}`);
+  } catch (e) {
+    console.error('Facebook start error:', e);
+    res.status(500).send('OAuth start error');
+  }
+});
+
+app.get('/api/auth/facebook/callback', async (req, res) => {
+  try {
+    const code = String(req.query.code || '');
+    const stateRaw = req.query.state ? String(req.query.state) : '';
+    const state = stateRaw ? JSON.parse(Buffer.from(stateRaw, 'base64url').toString('utf8')) : {};
+    const redirectFinal = state.redirect || OAUTH_REDIRECT_DEFAULT;
+
+    const redirect_uri = `${SERVER_BASE_URL}/api/auth/facebook/callback`;
+    const tokenParams = new URLSearchParams({
+      client_id: FACEBOOK_CLIENT_ID,
+      client_secret: FACEBOOK_CLIENT_SECRET,
+      redirect_uri,
+      code,
+    });
+    const tokenRes = await fetch(`https://graph.facebook.com/v18.0/oauth/access_token?${tokenParams.toString()}`);
+    const tokenData = await tokenRes.json();
+    if (!tokenRes.ok) throw new Error(tokenData?.error?.message || 'Error al intercambiar código');
+
+    const access_token = tokenData.access_token;
+    const userRes = await fetch(`https://graph.facebook.com/me?fields=id,name,email&access_token=${encodeURIComponent(access_token)}`);
+    const userInfo = await userRes.json();
+    if (!userRes.ok || !userInfo || !(userInfo.email || userInfo.id)) throw new Error('No se pudo obtener el perfil de Facebook');
+
+    const email = userInfo.email || `${userInfo.id}@facebook.local`;
+    const dbUser = await upsertSocialUser({ name: userInfo.name, email });
+    const payload = Buffer.from(JSON.stringify({ user: { id: dbUser.id, name: dbUser.name, email: dbUser.email } })).toString('base64url');
+    res.redirect(`${redirectFinal}#sso=${payload}`);
+  } catch (e) {
+    console.error('Facebook callback error:', e);
+    res.status(500).send('OAuth error');
   }
 });
 
