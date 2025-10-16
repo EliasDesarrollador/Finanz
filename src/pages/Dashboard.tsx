@@ -78,12 +78,19 @@ const Dashboard = () => {
       if (raw) {
         const u = JSON.parse(raw);
         setUser(u);
-        const budgetKey = `et_budget_${u.id || u.email || 'default'}`;
-        const savedBudget = localStorage.getItem(budgetKey);
-        if (savedBudget && !Number.isNaN(Number(savedBudget))) {
-          setMonthlyBudget(Number(savedBudget));
-        }
+        const period = new Date().toISOString().slice(0, 7);
         if (u && u.id) {
+          // Cargar presupuesto mensual persistido en el backend
+          fetch(`${API_BASE}/api/budget?userId=${u.id}&period=${period}`)
+            .then(r => r.json())
+            .then(data => {
+              if (data && typeof data.amount === 'number') {
+                setMonthlyBudget(Number(data.amount));
+              }
+            })
+            .catch(() => {});
+
+          // Cargar gastos del usuario
           fetch(`${API_BASE}/api/expenses?userId=${u.id}`)
             .then(r => r.json())
             .then(data => {
@@ -99,6 +106,13 @@ const Dashboard = () => {
               }
             })
             .catch(() => {});
+        } else {
+          // Fallback local por periodo si no hay usuario con id
+          const budgetKey = `et_budget_${(u && (u.id || u.email)) || 'default'}_${period}`;
+          const savedBudget = localStorage.getItem(budgetKey);
+          if (savedBudget && !Number.isNaN(Number(savedBudget))) {
+            setMonthlyBudget(Number(savedBudget));
+          }
         }
       }
     } catch {}
@@ -200,13 +214,27 @@ const Dashboard = () => {
       });
       return;
     }
+
     setMonthlyBudget(amountNumber);
-    try {
-      const raw = localStorage.getItem('et_user');
-      const u = raw ? JSON.parse(raw) : null;
-      const budgetKey = `et_budget_${(u && (u.id || u.email)) || 'default'}`;
-      localStorage.setItem(budgetKey, String(amountNumber));
-    } catch {}
+
+    const period = new Date().toISOString().slice(0, 7);
+    if (user && user.id) {
+      // Guardar en backend
+      fetch(`${API_BASE}/api/budget`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.id, period, amount: amountNumber })
+      })
+      .then(() => {})
+      .catch(() => {});
+    } else {
+      // Fallback local si no hay usuario con id
+      try {
+        const budgetKey = `et_budget_${(user && (user.id || user.email)) || 'default'}_${period}`;
+        localStorage.setItem(budgetKey, String(amountNumber));
+      } catch {}
+    }
+
     setShowBudgetModal(false);
     toast({
       title: "Presupuesto actualizado",

@@ -1,0 +1,90 @@
+mutation SeedData @transaction @auth(level: PUBLIC, insecureReason: "This operation is safe to expose to the public") {
+  user_insertMany(data: [
+    {
+      id: "550e8400-e29b-41d4-a716-446655440000",
+      firstName: "Demo",
+      lastName: "User",
+      email: "demouser@example.com",
+      passwordHash: "hashed_password",
+      createdAt: "2024-01-01T00:00:00Z"
+    },
+    {
+      id: "660e8400-e29b-41d4-a716-446655440001",
+      firstName: "Jane",
+      lastName: "Doe",
+      email: "janedoe@example.com",
+      passwordHash: "another_hashed_password",
+      createdAt: "2024-02-15T12:30:00Z"
+    }
+  ])
+  category_insertMany(data: [
+    {
+      id: "770e8400-e29b-41d4-a716-446655440002",
+      userId: "550e8400-e29b-41d4-a716-446655440000",
+      name: "Food",
+      description: "Groceries and eating out",
+      type: "Expense",
+      createdAt: "2024-01-05T08:00:00Z"
+    },
+    {
+      id: "880e8400-e29b-41d4-a716-446655440003",
+      userId: "660e8400-e29b-41d4-a716-446655440001",
+      name: "Salary",
+      description: "Monthly income",
+      type: "Income",
+      createdAt: "2024-02-20T09:00:00Z"
+    }
+  ])
+  account_insertMany(data: [
+    {
+      id: "990e8400-e29b-41d4-a716-446655440004",
+      userId: "550e8400-e29b-41d4-a716-446655440000",
+      name: "Checking Account",
+      description: "Main bank account",
+      type: "Asset",
+      initialBalance: 1000.00,
+      createdAt: "2024-01-10T14:00:00Z",
+      user: {id: "550e8400-e29b-41d4-a716-446655440000"}
+    },
+    {
+      id: "aa0e8400-e29b-41d4-a716-446655440005",
+      userId: "660e8400-e29b-41d4-a716-446655440001",
+      name: "Savings Account",
+      description: "For long-term savings",
+      type: "Asset",
+      initialBalance: 5000.00,
+      createdAt: "2024-02-25T16:00:00Z",
+      user: {id: "660e8400-e29b-41d4-a716-446655440001"}
+    }
+  ])
+  transaction_insertMany(data: [
+    {
+      id: "bb0e8400-e29b-41d4-a716-446655440006",
+      accountId: "990e8400-e29b-41d4-a716-446655440004",
+      userId: "550e8400-e29b-41d4-a716-446655440000",
+      categoryId: "770e8400-e29b-41d4-a716-446655440002",
+      description: "Grocery shopping",
+      type: "Expense",
+      amount: 50.00,
+      date: "2024-01-15",
+      createdAt: "2024-01-15T10:00:00Z",
+      account: {id: "990e8400-e29b-41d4-a716-446655440004"},
+      category: {id: "770e8400-e29b-41d4-a716-446655440002"},
+      user: {id: "550e8400-e29b-41d4-a716-446655440000"}
+    },
+    {
+      id: "cc0e8400-e29b-41d4-a716-446655440007",
+      accountId: "aa0e8400-e29b-41d4-a716-446655440005",
+      userId: "660e8400-e29b-41d4-a716-446655440001",
+      categoryId: "880e8400-e29b-41d4-a716-446655440003",
+      description: "Monthly salary",
+      type: "Income",
+      amount: 3000.00,
+      date: "2024-02-28",
+      createdAt: "2024-02-28T11:00:00Z",
+      account: {id: "aa0e8400-e29b-41d4-a716-446655440005"},
+      category: {id: "880e8400-e29b-41d4-a716-446655440003"},
+      user: {id: "660e8400-e29b-41d4-a716-446655440001"}
+    }
+  ])
+}
